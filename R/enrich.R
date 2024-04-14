@@ -175,6 +175,12 @@ enrich_gsego=function(module,DEG,ont='BP'){
   return(df_GO)}
   
 shuangce_go=function(frame,title='title'){
+  frame$value=frame$GeneRatio
+  frame$pathway=frame$Description
+  frame <- frame %>%
+    group_by(ID) %>%
+    filter(n() == 1) %>%
+    ungroup()
   if (nrow(frame) > 20) {
     top_max <- frame %>%
       filter(GeneRatio > 0)%>%
@@ -190,20 +196,25 @@ shuangce_go=function(frame,title='title'){
     # 合并结果
     frame <- rbind(top_max, top_min)
   }
+  
   color <- rep("#ae4531", nrow(frame))
   color[which(frame$GeneRatio < 0)] <- "#2f73bb"
   
   frame$color <- color
-  
-  
+  num=nrow(frame)
+  ymax=max(abs(frame$GeneRatio ))
+  if(ymax<=0.5){
+    ymax <- 0.5}
+  if(ymax>0.5){
+  ymax <- ceiling(max(ymax) * 10) / 10}
   # 最终绘图代码：
-ggplot(frame)+
+p=ggplot(frame)+
     geom_col(aes(reorder(Description, GeneRatio), GeneRatio, fill = color))+
     scale_fill_manual(values = c("#2f73bb","#ae4531"))+
     # 加一条竖线：
     geom_segment(aes(y = 0, yend = 0,x = 0, xend = 21))+
     theme_classic()+
-    ylim(-0.5,0.5)+
+    ylim(-ymax,ymax)+
     coord_flip()+
     # 调整主题：
     theme(
@@ -218,21 +229,22 @@ ggplot(frame)+
     )+
     ylab("GeneRatio")+
     # 添加label：
-  geom_text(data=data[which(data$value > 0), ],aes(x = pathway, y = 0, label = pathway), 
-            hjust = 1.1, size = 4)+
-  geom_text(data=data[which(data$value < 0), ],aes(x = pathway, y = 0, label = pathway), 
-            hjust = -0.1, size = 4)+
+  geom_text(data=frame[which(frame$value > 0), ],aes(x = pathway, y = 0, label = pathway), 
+            hjust = 1.1, size = 3.7 ,colour = "black", fontface = "bold")+
+  geom_text(data=frame[which(frame$value < 0), ],aes(x = pathway, y = 0, label = pathway), 
+            hjust = -0.1, size = 3.7 ,colour = "black", fontface = "bold")+
     ggtitle(title)+
+  theme(plot.title = element_text(face = "bold"))+
     scale_x_discrete(expand=expansion(add=c(0,1.5)))+
     # 添加箭头注释：
-  geom_segment(aes(y = -0.03, yend = -0.35,x = 21, xend = 21),
+  geom_segment(aes(y = -0.03, yend = -0.35,x = num+1, xend = num+1),
                arrow = arrow(length = unit(0.2, "cm"), type="closed"), 
                size = 0.5)+
-  geom_segment(aes(y = 0.03, yend = 0.35,x = 21, xend = 21),
+  geom_segment(aes(y = 0.03, yend = 0.35,x = num+1, xend = num+1),
                arrow = arrow(length = unit(0.2, "cm"), type="closed"), 
                size = 0.5)+
-    annotate("text", x = 21, y = -0.5, label = "DOWN")+
-    annotate("text", x = 21, y = 0.5, label = "UP")
-  
+  annotate("text", x = 21, y = -0.4, label = "DOWN", fontface = "bold", size = 4) +
+  annotate("text", x = 21, y = 0.4, label = "UP", fontface = "bold", size = 4)
+return(p)
 }
    
