@@ -17,7 +17,10 @@ boxplot_group <- function(data, group, feature) {
       rstatix::wilcox_test(formula, p.adjust.method = "bonferroni") %>%
       rstatix::add_xy_position()
     stat.test$y.position <- stat.test$y.position + seq(from = max(stat.test$y.position )*0.01, by =max(stat.test$y.position )*0.06, length.out = nrow(stat.test))
-    
+    if (!"p.adj.signif" %in% names(stat.test)) {
+      stat.test$p.adj.signif <- ifelse(stat.test$p < 0.001, "***",
+                                       ifelse(stat.test$p < 0.01, "**",
+                                              ifelse(stat.test$p < 0.05, "*", "ns")))}
     # 获取组数并据此选择颜色
     groupnum <- length(unique(data[[group]]))
     colors <- c('#eb4b3a', "#355783", "#48bad0", "#ef9a80", "#1a9781")
@@ -27,12 +30,13 @@ boxplot_group <- function(data, group, feature) {
     
     # 绘制图形，这里不再包含 geom_jitter()
     p=ggplot(data, aes_string(x = group, y = featurename, color = group)) +
-      geom_boxplot(outlier.shape = 0.1) +  # 设置离群点颜色和形状
+      geom_boxplot(outlier.shape = 1) +  # 设置离群点颜色和形状
       scale_color_manual(values = colors) +
-      xlab("") +
+      xlab("") +ylab("Score") +  # 设置y轴标签
+      ggtitle(featurename) +  # 设置标题
       theme_classic() +
       theme(legend.position = "none",
-            axis.text.x = element_text(angle = 90, vjust = 0.5, face = "bold", color = colors)) +
+            axis.text.x = element_text(angle = 45, vjust = 0.5, face = "bold", color = colors)) +
       ggpubr::stat_pvalue_manual(stat.test, label = "p.adj.signif",
                                  bracket.size = 0.3, tip.length = 0.01)
     result[[featurename]] = p
