@@ -1,0 +1,42 @@
+library(tidyverse)
+library(ggpubr)
+library(ggsignif)
+library(rstatix)
+
+boxplot_group <- function(data, group, feature) {
+  # 保证数据中只包含需要的列
+  data <- data[, c(group, feature), drop = FALSE]
+  result <- list()
+  
+  for (featurename in feature) {
+    # 动态构建公式
+    formula <- as.formula(paste(featurename, "~", group))
+    
+    # 执行 Wilcoxon 检验
+    stat.test <- data %>%
+      rstatix::wilcox_test(formula, p.adjust.method = "bonferroni") %>%
+      rstatix::add_xy_position()
+    stat.test$y.position <- stat.test$y.position + seq(from = max(stat.test$y.position )*0.01, by =max(stat.test$y.position )*0.06, length.out = nrow(stat.test))
+    
+    # 获取组数并据此选择颜色
+    groupnum <- length(unique(data[[group]]))
+    colors <- c('#eb4b3a', "#355783", "#48bad0", "#ef9a80", "#1a9781")
+    if (groupnum > length(colors)) {
+      colors <- rep(colors, length.out = groupnum)  # 确保颜色足够
+    }
+    
+    # 绘制图形，这里不再包含 geom_jitter()
+    p=ggplot(data, aes_string(x = group, y = featurename, color = group)) +
+      geom_boxplot(outlier.shape = 0.1) +  # 设置离群点颜色和形状
+      scale_color_manual(values = colors) +
+      xlab("") +
+      theme_classic() +
+      theme(legend.position = "none",
+            axis.text.x = element_text(angle = 90, vjust = 0.5, face = "bold", color = colors)) +
+      ggpubr::stat_pvalue_manual(stat.test, label = "p.adj.signif",
+                                 bracket.size = 0.3, tip.length = 0.01)
+    result[[featurename]] = p
+  }
+  
+  return(result)
+}
